@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from collections import deque
 from threading import RLock
 import zlib
@@ -10,8 +8,6 @@ import select
 import sys
 import json
 import re
-
-from future.utils import raise_
 
 from .types import VarInt
 from .packets import clientbound, serverbound
@@ -105,7 +101,7 @@ class Connection(object):
         """  # NOQA
 
         # This lock is re-entrant because it may be acquired in a re-entrant
-        # manner from within an outgoing packet listener
+        # manner from within an outgoing packet
         self._write_lock = RLock()
 
         self.networking_thread = None
@@ -195,6 +191,10 @@ class Connection(object):
     def listener(self, *packet_types, **kwds):
         """
         Shorthand decorator to register a function as a packet listener.
+
+        Wraps :meth:`minecraft.networking.connection.register_packet_listener`
+        :param packet_types: Packet types to listen for.
+        :param kwds: Keyword arguments for `register_packet_listener`
         """
         def listener_decorator(handler_func):
             self.register_packet_listener(handler_func, *packet_types, **kwds)
@@ -491,7 +491,8 @@ class Connection(object):
 
         # If allowed by the final exception handler, re-raise the exception.
         if self.handle_exception is None and not caught:
-            raise_(*exc_info)
+            exc_value, exc_tb = exc_info[1:]
+            raise exc_value.with_traceback(exc_tb)
 
     def _version_mismatch(self, server_protocol=None, server_version=None):
         if server_protocol is None:
@@ -592,7 +593,8 @@ class NetworkingThread(threading.Thread):
                     exc_info = None
 
             if exc_info is not None:
-                raise_(*exc_info)
+                exc_value, exc_tb = exc_info[1:]
+                raise exc_value.with_traceback(exc_tb)
 
 
 class PacketReactor(object):
@@ -643,14 +645,16 @@ class PacketReactor(object):
             packet_id = VarInt.read(packet_data)
 
             # If we know the structure of the packet, attempt to parse it
-            # otherwise just skip it
+            # otherwise, just return an instance of the base Packet class.
             if packet_id in self.clientbound_packets:
                 packet = self.clientbound_packets[packet_id]()
                 packet.context = self.connection.context
                 packet.read(packet_data)
-                return packet
             else:
-                return packets.Packet(context=self.connection.context, packet_id=packet_id)
+                packet = packets.Packet()
+                packet.context = self.connection.context
+                packet.id = packet_id
+            return packet
         else:
             return None
 

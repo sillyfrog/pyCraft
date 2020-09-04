@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 from minecraft import __version__
 
 
@@ -15,13 +15,17 @@ MAIN_AUTHORS = ["Ammar Askar <ammar@ammaraskar.com>",
 
 URL = "https://github.com/ammaraskar/pyCraft"
 
-setup(name="minecraft",
+setup(name="pyCraft",
       version=__version__,
       description="Python MineCraft library",
       long_description=read("README.rst"),
       url=URL,
       download_url=URL + "/tarball/" + __version__,
       author=", ".join(MAIN_AUTHORS),
+      install_requires=["cryptography>=1.5",
+                        "requests",
+                        "pynbt",
+                        ],
       packages=["minecraft",
                 "minecraft.networking",
                 "minecraft.networking.packets",
